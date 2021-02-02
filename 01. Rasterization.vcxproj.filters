@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="renderer">
+      <UniqueIdentifier>{9C6AA017-8837-FB22-B150-E9CA9D7C30B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="renderer\rasterizer">
+      <UniqueIdentifier>{D68B510F-42ED-2E1D-CB5A-75CF37BB65DC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{169C8510-82B0-ADC1-4B32-5121B705AAF2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="world">
+      <UniqueIdentifier>{6D35A710-D949-CFC1-A2CB-72210E9FCBF2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\renderer\rasterizer\rasterizer.h">
+      <Filter>renderer\rasterizer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\rasterizer\rasterizer_renderer.h">
+      <Filter>renderer\rasterizer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\renderer.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resource.h" />
+    <ClInclude Include="src\settings.h" />
+    <ClInclude Include="src\utils\resource_utils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\world\camera.h">
+      <Filter>world</Filter>
+    </ClInclude>
+    <ClInclude Include="src\world\model.h">
+      <Filter>world</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\renderer\rasterizer\rasterizer_renderer.cpp">
+      <Filter>renderer\rasterizer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\renderer.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\settings.cpp" />
+    <ClCompile Include="src\utils\resource_utils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\camera.cpp">
+      <Filter>world</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\model.cpp">
+      <Filter>world</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -16,9 +16,10 @@ cg::world::model::~model() {}
 
 void cg::world::model::load_obj(const std::filesystem::path& model_path)
 {
-	//std::string inputfile = "cornell_box.obj";
+	// std::string inputfile = "cornell_box.obj";
 	tinyobj::ObjReaderConfig reader_config;
-	reader_config.mtl_search_path = model_path.parent_path().string(); // Path to material files
+	reader_config.mtl_search_path =
+		model_path.parent_path().string(); // Path to material files
 	reader_config.triangulate = true;
 
 	tinyobj::ObjReader reader;
@@ -28,7 +29,7 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 		if (!reader.Error().empty())
 		{
 			THROW_ERROR(reader.Error())
-			//std::cerr << "TinyObjReader: " << reader.Error();
+			// std::cerr << "TinyObjReader: " << reader.Error();
 		}
 		exit(1);
 	}
@@ -38,7 +39,7 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 	materials = reader.GetMaterials();
 
 
-	//Loop over shapes
+	// Loop over shapes
 	size_t vertex_buffer_id = 0;
 	std::vector<size_t> per_shapes_ids(shapes.size());
 	for (size_t s = 0; s < shapes.size(); s++)
@@ -52,7 +53,7 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 		}
 	}
 
-	vertex_buffer = std::make_shared < cg::resource<cg::vertex >> (vertex_buffer_id);
+	vertex_buffer = std::make_shared<cg::resource<cg::vertex>>(vertex_buffer_id);
 	per_shape_buffer.resize(shapes.size());
 
 	for (size_t s = 0; s < shapes.size(); s++)
@@ -98,7 +99,7 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 					attrib.vertices[3 * c_id.vertex_index + 2],
 				};
 
-				normal = normalize(cross(b-a, c-a)); // todo
+				normal = normalize(cross(b - a, c - a)); // todo
 			}
 
 			for (size_t v = 0; v < fv; v++)
@@ -107,9 +108,9 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
 
 				cg::vertex vertex = {};
-				vertex.x  = attrib.vertices[3 * idx.vertex_index + 0];
+				vertex.x = attrib.vertices[3 * idx.vertex_index + 0];
 				vertex.y = attrib.vertices[3 * idx.vertex_index + 1];
-				vertex.z= attrib.vertices[3 * idx.vertex_index + 2];
+				vertex.z = attrib.vertices[3 * idx.vertex_index + 2];
 
 				if (idx.normal_index > -1)
 				{
@@ -119,9 +120,9 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 				}
 				else
 				{
-					vertex.nx = vertex.x;
-					vertex.ny = vertex.y;
-					vertex.nz = vertex.z;
+					vertex.nx = normal.x;
+					vertex.ny = normal.y;
+					vertex.nz = normal.z;
 				}
 
 
@@ -140,13 +141,13 @@ void cg::world::model::load_obj(const std::filesystem::path& model_path)
 					vertex.emissive_g = material.emission[1];
 					vertex.emissive_b = material.emission[2];
 				}
-				
-				// tinyobj::real_t tx = attrib.texcoords[2 * idx.texcoord_index + 0];
-				// tinyobj::real_t ty = attrib.texcoords[2 * idx.texcoord_index + 1];
-				// Optional: vertex colors
-				// tinyobj::real_t red = attrib.colors[3*idx.vertex_index+0];
-				// tinyobj::real_t green = attrib.colors[3*idx.vertex_index+1];
-				// tinyobj::real_t blue = attrib.colors[3*idx.vertex_index+2];
+
+				// tinyobj::real_t tx = attrib.texcoords[2 * idx.texcoord_index
+				// + 0]; tinyobj::real_t ty = attrib.texcoords[2 *
+				// idx.texcoord_index + 1]; Optional: vertex colors tinyobj::real_t
+				// red = attrib.colors[3*idx.vertex_index+0]; tinyobj::real_t
+				// green = attrib.colors[3*idx.vertex_index+1]; tinyobj::real_t
+				// blue = attrib.colors[3*idx.vertex_index+2];
 				vertex_buffer->item(vertex_buffer_id++) = vertex;
 				per_shape_buffer[s]->item(per_shape_id++) = vertex;
 			}
@@ -171,10 +172,8 @@ std::vector<std::shared_ptr<cg::resource<cg::vertex>>>
 
 const float4x4 cg::world::model::get_world_matrix() const
 {
-	return float4x4{ 
-		{ 1.0, 0.f, 0.f, 0.f }, 
-		{ 0.f, 1.0, 0.f, 0.f },
-		{ 0.f, 0.f, 1.0, 0.f },
-		{ 0.f, 0.f, 0.f, 1.0 }
-	};
+	return float4x4{ { 1.0, 0.f, 0.f, 0.f },
+					 { 0.f, 1.0, 0.f, 0.f },
+					 { 0.f, 0.f, 1.0, 0.f },
+					 { 0.f, 0.f, 0.f, 1.0 } };
 }

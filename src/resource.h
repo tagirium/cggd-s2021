@@ -35,17 +35,17 @@ private:
 template<typename T>
 inline resource<T>::resource(size_t size)
 {
-//THROW_ERROR("Not implemented yet");
+	// THROW_ERROR("Not implemented yet");
 	data.resize(size);
-	//item_size = sizeof(T);
+	// item_size = sizeof(T);
 	stride = 0;
 }
 template<typename T>
 inline resource<T>::resource(size_t x_size, size_t y_size)
 {
-	//THROW_ERROR("Not implemented yet");
+	// THROW_ERROR("Not implemented yet");
 	data.resize(x_size * y_size);
-	//item_size = sizeof(T);
+	// item_size = sizeof(T);
 	stride = x_size;
 }
 template<typename T>
@@ -87,8 +87,8 @@ struct color
 {
 	static color from_float3(const float3& in)
 	{
-		THROW_ERROR("Not implemented yet");
-		return color();
+		color color{ in.x, in.y, in.z };
+		return color;
 	};
 	float r;
 	float g;

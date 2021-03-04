@@ -1,208 +1,364 @@
-#include "window.h"
+#pragma once
 
-#include <windowsx.h>
+#include "resource.h"
 
-using namespace cg::utils;
+#include <linalg.h>
+#include <memory>
+#include <omp.h>
+#include <random>
+#include <time.h>
 
-HWND window::hwnd = nullptr;
+using namespace linalg::aliases;
 
-/*
-int Win32Window::Run(Renderer* pRenderer, HINSTANCE hInstance, int nCmdShow)
+namespace cg::renderer
 {
-	// Initialize the window class.
-	WNDCLASSEX window_class = {};
-	window_class.cbSize = sizeof(WNDCLASSEX);
-	window_class.style = CS_HREDRAW | CS_VREDRAW;
-	window_class.lpfnWndProc = WindowProc;
-	window_class.hInstance = hInstance;
-	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.lpszClassName = L"DXSampleClass";
-	RegisterClassEx(&window_class);
-
-	// Create the window and store a handle to it.
-	RECT window_rect = { 0, 0, static_cast<LONG>(pRenderer->GetWidth()),
-						 static_cast<LONG>(pRenderer->GetHeight()) };
-	AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
-	hwnd = CreateWindow(
-		window_class.lpszClassName, pRenderer->GetTitle(), WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, window_rect.right - window_rect.left,
-		window_rect.bottom - window_rect.top, nullptr, nullptr, hInstance,
-pRenderer);
-
-	// Initialize the sample. OnInit is defined in each child-implementation of
-DXSample. pRenderer->OnInit(); ShowWindow(hwnd, nCmdShow);
-	// Main sample loop.
-	MSG msg = {};
-	while (msg.message != WM_QUIT)
+struct ray
+{
+	ray(float3 position, float3 direction) : position(position)
 	{
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+		this->direction = normalize(direction);
 	}
+	float3 position;
+	float3 direction;
+};
 
-	pRenderer->OnDestroy();
-	// Return this part of the WM_QUIT message to Windows.
-	return static_cast<int>(msg.wParam);
+struct payload
+{
+	float t;
+	float3 bary;
+	cg::color color;
+};
+
+template<typename VB>
+struct triangle
+{
+	triangle(const VB& vertex_a, const VB& vertex_b, const VB& vertex_c);
+
+	float3 a;
+	float3 b;
+	float3 c;
+
+	float3 ba;
+	float3 ca;
+
+	float3 na;
+	float3 nb;
+	float3 nc;
+
+	float3 ambient;
+	float3 diffuse;
+	float3 emissive;
+};
+
+template<typename VB>
+inline triangle<VB>::triangle(const VB& vertex_a, const VB& vertex_b, const VB& vertex_c)
+{
+	a = float3{ vertex_a.x, vertex_a.y, vertex_a.z };
+	b = float3{ vertex_b.x, vertex_b.y, vertex_b.z };
+	c = float3{ vertex_c.x, vertex_c.y, vertex_c.z };
+
+	ba = b - a;
+	ca = c - a;
+
+	na = float3{ vertex_a.nx, vertex_a.ny, vertex_a.nz };
+	nb = float3{ vertex_b.nx, vertex_b.ny, vertex_b.nz };
+	nc = float3{ vertex_c.nx, vertex_c.ny, vertex_c.nz };
+
+	ambient = {
+		vertex_a.ambient_r,
+		vertex_a.ambient_g,
+		vertex_a.ambient_b,
+	};
+	diffuse = {
+		vertex_a.diffuse_r,
+		vertex_a.diffuse_g,
+		vertex_a.diffuse_b,
+	};
+	emissive = {
+		vertex_a.emissive_r,
+		vertex_a.emissive_g,
+		vertex_a.emissive_b,
+	};
 }
 
-LRESULT Win32Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
-lParam)
+template<typename VB>
+class aabb
 {
-	Renderer* pRender =
-		reinterpret_cast<Renderer*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+public:
+	void add_triangle(const triangle<VB> triangle);
+	const std::vector<triangle<VB>>& get_triangles() const;
+	bool aabb_test(const ray& ray) const;
 
-	switch (message)
-	{
-	case WM_CREATE: {
-		// Save the Renderer* passed in to CreateWindow.
-		LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
-		SetWindowLongPtr(
-			hWnd, GWLP_USERDATA,
-			reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
-	}
-		return 0;
+protected:
+	std::vector<triangle<VB>> triangles;
 
-	case WM_PAINT: {
-		if (pRender)
-		{
-			pRender->OnUpdate();
-			pRender->OnRender();
-		}
-	}
-		return 0;
+	float3 aabb_min;
+	float3 aabb_max;
+};
 
-	case WM_KEYDOWN: {
-		if (pRender)
-		{
-			pRender->OnKeyDown(static_cast<UINT8>(wParam));
-		}
-	}
-		return 0;
-
-	case WM_KEYUP: {
-		if (pRender)
-		{
-			pRender->OnKeyUp(static_cast<UINT8>(wParam));
-		}
-	}
-		return 0;
-
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	}
-
-	// Handle any messages the switch statement didn't.
-	return DefWindowProc(hWnd, message, wParam, lParam);
-}
-*/
-
-int cg::utils::window::run(cg::renderer::renderer* renderer, HINSTANCE hinstance, int ncmdshow)
+struct light
 {
-	// Initialize the window class.
-	WNDCLASSEX window_class = {};
-	window_class.cbSize = sizeof(WNDCLASSEX);
-	window_class.style = CS_HREDRAW | CS_VREDRAW;
-	window_class.lpfnWndProc = window_proc;
-	window_class.hInstance = hinstance;
-	window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-	window_class.lpszClassName = L"DXSampleClass";
-	RegisterClassEx(&window_class);
+	float3 position;
+	float3 color;
+};
 
-	// Create the window and store a handle to it.
-	RECT window_rect = { 0, 0, static_cast<LONG>(renderer->get_width()),
-						 static_cast<LONG>(renderer->get_height()) };
-	AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
-	hwnd = CreateWindow(
-		window_class.lpszClassName, L"DX12 renderer", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, window_rect.right - window_rect.left,
-		window_rect.bottom - window_rect.top, nullptr, nullptr, hinstance, renderer);
+template<typename VB, typename RT>
+class raytracer
+{
+public:
+	raytracer(){};
+	~raytracer(){};
 
-	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
-	renderer->init();
-	ShowWindow(hwnd, ncmdshow);
-	// Main sample loop.
-	MSG msg = {};
-	while (msg.message != WM_QUIT)
-	{
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
+	void set_render_target(std::shared_ptr<resource<RT>> in_render_target);
+	void clear_render_target(const RT& in_clear_value);
+	void set_viewport(size_t in_width, size_t in_height);
 
-	renderer->destroy();
-	// Return this part of the WM_QUIT message to Windows.
-	return static_cast<int>(msg.wParam);
+	void set_per_shape_vertex_buffer(
+		std::vector<std::shared_ptr<cg::resource<VB>>> in_per_shape_vertex_buffer);
+	void build_acceleration_structure();
+	std::vector<aabb<VB>> acceleration_structures;
+
+	void ray_generation(float3 position, float3 direction, float3 right, float3 up);
+
+	payload trace_ray(const ray& ray, size_t depth, float max_t = 1000.f, float min_t = 0.001f) const;
+	payload intersection_shader(const triangle<VB>& triangle, const ray& ray) const;
+
+	std::function<payload(const ray& ray)> miss_shader = nullptr;
+	std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle)> closest_hit_shader =
+		nullptr;
+	std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle)> any_hit_shader =
+		nullptr;
+
+
+protected:
+	std::shared_ptr<cg::resource<RT>> render_target;
+	std::vector<std::shared_ptr<cg::resource<VB>>> per_shape_vertex_buffer;
+
+	float get_random(const int thread_num, float range = 0.1f) const;
+
+	size_t width = 1920;
+	size_t height = 1080;
+};
+
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::set_render_target(std::shared_ptr<resource<RT>> in_render_target)
+{
+	render_target = in_render_target;
 }
 
-LRESULT cg::utils::window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::clear_render_target(const RT& in_clear_value)
 {
-	cg::renderer::renderer* renderer = reinterpret_cast<cg::renderer::renderer*>(
-		GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
-	switch (message)
+	for (size_t i = 0; i < render_target->get_number_of_elements(); i++)
 	{
-	case WM_CREATE: {
-		// Save the Renderer* passed in to CreateWindow.
-		LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lparam);
-		SetWindowLongPtr(
-			hwnd, GWLP_USERDATA,
-			reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
+		render_target->item(i) = in_clear_value;
 	}
-		return 0;
+}
 
-	case WM_PAINT: {
-		if (renderer)
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::set_per_shape_vertex_buffer(
+	std::vector<std::shared_ptr<cg::resource<VB>>> in_per_shape_vertex_buffer)
+{
+	per_shape_vertex_buffer = in_per_shape_vertex_buffer;
+}
+
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::build_acceleration_structure()
+{
+	for (auto& vertex_buffer : per_shape_vertex_buffer)
+	{
+		size_t vertex_id = 0;
+		aabb<VB> aabb;
+		while (vertex_id < vertex_buffer->get_number_of_elements())
 		{
-			renderer->update();
-			renderer->render();
+			triangle<VB> triangle(
+				vertex_buffer->item(vertex_id++), 
+				vertex_buffer->item(vertex_id++),
+				vertex_buffer->item(vertex_id++));
+			aabb.add_triangle(triangle);
+		}
+		acceleration_structures.push_back(aabb);
+	}
+}
+
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::set_viewport(size_t in_width, size_t in_height)
+{
+	width = in_width;
+	height = in_height;
+}
+
+template<typename VB, typename RT>
+inline void raytracer<VB, RT>::ray_generation(
+	float3 position, float3 direction, float3 right, float3 up)
+{
+	for (int x = 0; x < width; x++)
+	{
+#pragma omp parallel for
+		for (int y = 0; y < height; y++)
+		{
+			// from [0; width - 1] to [0; 1] to [0; 2] to [-1, 1]
+			float u = (2.f * x / static_cast<float>(width - 1)) - 1.f;
+			float v = (2.f * y / static_cast<float>(height - 1)) - 1.f;
+
+			u *= static_cast<float>(width) / static_cast<float>(height);
+
+			float u_delta = 1 / static_cast<float>(width - 1);
+			u_delta *= static_cast<float>(width) / static_cast<float>(height);
+			float v_delta = 1.f / static_cast<float>(height - 1);
+
+			float x_jitter = get_random(omp_get_thread_num() + clock());
+			float y_jitter = get_random(omp_get_thread_num() + clock());
+
+			float3 ray_direction = direction + (u) * right - (v) * up;
+
+			ray ray_0(position, ray_direction);
+			payload payload_0 = trace_ray(ray_0, 1);
+
+			//super sampling
+			/*
+			ray ray_1(position, ray_direction + u_delta * right);
+			payload payload_1 = trace_ray(ray_1, 1);
+			ray ray_2(position, ray_direction - v_delta * up);
+			payload payload_2 = trace_ray(ray_2, 1);
+			ray ray_3(position, ray_direction + u_delta * right - v_delta * up);
+			payload payload_3 = trace_ray(ray_3, 1);
+			// super sampling AA
+			/*cg::color accumed_color{ (payload_0.color.r + payload_1.color.r +
+									  payload_2.color.r + payload_3.color.r) /
+										 4,
+									 (payload_0.color.g + payload_1.color.g +
+									  payload_2.color.g + payload_3.color.g) /
+										 4,
+									 (payload_0.color.b + payload_1.color.b +
+									  payload_2.color.b + payload_3.color.b) /
+										 4 };*/
+
+			cg::color accumed =
+				cg::color::from_float3(render_target->item(x, y).to_float3());
+			cg::color result{
+				(accumed.r + payload_0.color.r) / 2.f,
+				(accumed.g + payload_0.color.g) / 2.f,
+				(accumed.b + payload_0.color.b) / 2.f,
+			};
+			render_target->item(x, y) = RT::from_color(result);
 		}
 	}
-		return 0;
+}
 
-	case WM_KEYDOWN: {
-		if (renderer)
+template<typename VB, typename RT>
+inline payload
+	raytracer<VB, RT>::trace_ray(const ray& ray, size_t depth, float max_t, float min_t) const
+{
+	if (depth == 0)
+		return miss_shader(ray);
+	depth--;
+
+	payload closest_hit_payload = {};
+	closest_hit_payload.t = max_t;
+	const triangle<VB>* closest_triangle = nullptr;
+
+	for (auto& aabb : acceleration_structures)
+	{
+		if (aabb.aabb_test(ray))
 		{
-			switch (static_cast<UINT8>(wparam))
+			for (auto& triangle : aabb.get_triangles())
 			{
-			case 87: // w
-				renderer->move_forward();
-				break;
-			case 83: // s
-				renderer->move_backward();
-				break;
-			case 68: // d
-				renderer->move_right();
-				break;
-			case 65: // a
-				renderer->move_left();
-				break;
+				payload payload = intersection_shader(triangle, ray);
+
+				if (payload.t > min_t && payload.t < closest_hit_payload.t)
+				{
+					closest_hit_payload = payload;
+					closest_triangle = &triangle;
+					if (any_hit_shader)
+						return any_hit_shader(ray, payload, triangle);
+				}
 			}
 		}
+		
 	}
-		return 0;
 
-	case WM_MOUSEMOVE: {
-		if (renderer)
+	
+	if (closest_hit_payload.t < max_t)
+	{
+		if (closest_hit_shader)
 		{
-			short x_pos = GET_X_LPARAM(lparam);
-			short y_pos = GET_Y_LPARAM(lparam);
-
-			renderer->move_yaw((2.f*static_cast<float>(x_pos) / renderer->get_width()-1.f)*30.f);
-			renderer->move_pitch((-2.f*static_cast<float>(y_pos) / renderer->get_height()+1.f)*30.f);
+			return closest_hit_shader(ray, closest_hit_payload, *closest_triangle);
 		}
 	}
-		return 0;
-
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	}
-
-	// Handle any messages the switch statement didn't.
-	return DefWindowProc(hwnd, message, wparam, lparam);
+	return miss_shader(ray);
 }
+
+template<typename VB, typename RT>
+inline payload
+	raytracer<VB, RT>::intersection_shader(const triangle<VB>& triangle, const ray& ray) const
+{
+	payload payload{};
+	payload.t = -1.f;
+	float3 pvec = cross(ray.direction, triangle.ca);
+	float det = dot(triangle.ba, pvec);
+	if (det > -1e-8 && det < 1e-8)
+		return payload;
+
+	float inv_det = 1.f / det;
+	float3 tvec = ray.position - triangle.a;
+	float u = dot(tvec, pvec) * inv_det;
+	if (u < 0.f || u > 1.f)
+		return payload;
+
+
+	float3 qvec = cross(tvec, triangle.ba);
+	float v = dot(ray.direction, qvec) * inv_det;
+	if (v < 0.f || u + v > 1.f)
+	{
+		return payload;
+	}
+	
+	payload.t = dot(triangle.ca, qvec) * inv_det;
+	payload.bary = float3{ 1.f - u - v, u, v };
+	return payload;
+}
+
+template<typename VB, typename RT>
+inline float raytracer<VB, RT>::get_random(const int thread_num, const float range) const
+{
+	static std::default_random_engine generator(thread_num);
+	static std::normal_distribution<float> distribution(0.f, range);
+	return distribution(generator);
+}
+
+
+template<typename VB>
+inline void aabb<VB>::add_triangle(const triangle<VB> triangle)
+{
+	if (triangles.empty())
+		aabb_max = aabb_min = triangle.a;
+	triangles.push_back(triangle);
+	aabb_max = max(triangle.a, aabb_max);
+	aabb_max = max(triangle.b, aabb_max);
+	aabb_max = max(triangle.c, aabb_max);
+
+	aabb_min = min(triangle.a, aabb_min);
+	aabb_min = min(triangle.b, aabb_min);
+	aabb_min = min(triangle.c, aabb_min);
+}
+
+template<typename VB>
+inline const std::vector<triangle<VB>>& aabb<VB>::get_triangles() const
+{
+	return triangles;
+}
+
+template<typename VB>
+inline bool aabb<VB>::aabb_test(const ray& ray) const
+{
+	float3 invRaydir = float3(1.f) / ray.direction;
+	float3 t0 = (aabb_max - ray.position) * invRaydir;
+	float3 t1 = (aabb_min - ray.position) * invRaydir;
+	float3 tmin = min(t0, t1);
+	float3 tmax = max(t0, t1);
+	//return std::max_element(tmin) <= std::min_element(tmax);
+	return maxelem(tmin) <= minelem(tmax);
+}
+
+} // namespace cg::renderer
